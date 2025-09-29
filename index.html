@@ -127,7 +127,7 @@
         ball.setAttribute('radius',params.ballMass>1 ? 0.22 : 0.19);
         ball.setAttribute('color',params.color);
         ball.setAttribute('dynamic-body',`mass:${params.ballMass} linearDamping:0.1 friction:${params.ballFriction}`);
-        ball.setAttribute('position',"0 0.5 -6.6");
+        ball.setAttribute('position',"-5 2 -6.6");
         ball.setAttribute('grabbable',''); // from aframe-extras, not super-hands
         ball.setAttribute('shadow','cast:true');
         // Listener to score: when ball passes pins, count score (simulate)
