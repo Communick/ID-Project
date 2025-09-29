@@ -2,366 +2,132 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>VR Bowling — A-Frame 1.7.0 (Score + Reset)</title>
+  <title>VR Bowling — Full Project</title>
 
-  <!-- Required libraries (exact versions you asked) -->
+  <!-- A-Frame & libs -->
   <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.2/dist/aframe-extras.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@c-frame/aframe-physics-system@4.1.0/dist/aframe-physics-system.min.js"></script>
   <script src="https://unpkg.com/super-hands@3.0.5/dist/super-hands.min.js"></script>
 
-  <style>
-    body { margin: 0; font-family: system-ui, Roboto, Arial; }
-    .hud {
-      position: fixed;
-      left: 10px;
-      top: 10px;
-      z-index: 9999;
-      background: rgba(0,0,0,0.55);
-      color: #fff;
-      padding: 10px 12px;
-      border-radius: 8px;
-      min-width: 240px;
-      font-size: 14px;
-    }
-    .hud .row { margin: 6px 0; }
-    .hud button, .hud select { margin-right: 6px; padding: 6px 8px; font-size: 13px; }
-    .hud .big { font-weight:700; font-size:16px; }
-  </style>
+  <style>body {margin:0}</style>
 
-  <!-- Custom components & game logic (define BEFORE scene) -->
   <script>
-  // === Game state ===
-  const Game = {
-    laneLength: 12.0,
-    pins: [],           // node refs
-    pinPositions: [],   // positions to racking
-    ballSpawn: { x:0, y:1.1, z: 3.5 },
-    ballEl: null,
-    frame: 1,
-    throwInFrame: 0,
-    scoreFrame: 0,
-    totalScore: 0,
-    maxThrows: 2,
-    frameActive: true,
-    resetDelay: 1200
-  };
-
-  // === Utilities ===
-  function computePinPositions() {
-    const spacing = 0.45;
-    const startZ = - (Game.laneLength);
-    const rows = 4; // 1+2+3+4 = 10 pins
-    const positions = [];
-    for (let r=0; r<rows; r++) {
-      const count = r+1;
-      const z = startZ + r * spacing;
-      const totalWidth = (count-1) * spacing;
-      for (let i=0;i<count;i++){
-        const x = (i*spacing) - (totalWidth/2);
-        positions.push({ x:x, y:0.22, z:z });
-      }
-    }
-    Game.pinPositions = positions;
-  }
-
-  // === Pin monitor component ===
-  AFRAME.registerComponent('pin-monitor', {
-    init: function() {
-      this.fallen = false;
-      // check periodically (throttled)
-      this.tick = AFRAME.utils.throttleTick(this._tick, 250, this);
-    },
-    _tick: function(t,dt) {
-      if (this.fallen) return;
-      // compute up vector in world space
-      const upLocal = new THREE.Vector3(0,1,0);
-      const rot = new THREE.Matrix4().extractRotation(this.el.object3D.matrixWorld);
-      const upWorld = upLocal.applyMatrix4(rot).normalize();
-      const dot = upWorld.dot(new THREE.Vector3(0,1,0)); // 1.0 upright, < ~0.7 tilted
-      if (dot < 0.7) {
-        this.fallen = true;
-        this.el.emit('pin-fallen', {}, false);
-      }
-    }
-  });
-
-  // === Ball config component (mass/size by type) ===
-  AFRAME.registerComponent('ball-config', {
-    schema: { type: { type: 'string', default: 'Medium' } },
-    init: function() { this.apply(); },
-    apply: function() {
-      const t = this.data.type;
-      let mass = 3.0, radius = 0.25;
-      if (t === 'Light') { mass = 1.8; radius = 0.22; }
-      if (t === 'Medium') { mass = 3.0; radius = 0.25; }
-      if (t === 'Heavy') { mass = 5.0; radius = 0.30; }
-      // geometry + physics
-      this.el.setAttribute('geometry', `primitive: sphere; radius: ${radius}`);
-      this.el.setAttribute('dynamic-body', `mass: ${mass}; linearDamping:0.04; angularDamping:0.9`);
-      this.el.classList.add('bowling-ball');
-    }
-  });
-
-  // === Throwable ball behavior (roll sound + detection zone) ===
-  AFRAME.registerComponent('ball-behavior', {
-    init: function() {
-      this.el.addEventListener('grab-end', () => {
-        Game.throwInFrame++;
-        updateHUD();
-        // small delay then check when ball reaches pin region
-        setTimeout(()=>this._startMonitor(), 120);
-      });
-      this.el.addEventListener('grab-start', () => {
-        // if player grabs again mid-run, cancel pending reset checks
-        if (this._monitorInterval) { clearInterval(this._monitorInterval); this._monitorInterval = null; }
-      });
-    },
-    _startMonitor: function(){
-      const el = this.el;
-      const check = () => {
-        if (!el.body) return;
-        const pos = el.object3D.position;
-        // if ball crosses near pins area, evaluate pins shortly later
-        if (pos.z <= -Game.laneLength + 0.8) {
-          clearInterval(this._monitorInterval);
-          this._monitorInterval = null;
-          // wait a moment for pins to settle
-          setTimeout(()=> evaluatePins(), 900);
-          return;
-        }
-        // gutter detection: if z passed beyond lane end + side too far -> end frame
-        const gutterHalf = 1.1; // half lane width approx; tweak if needed
-        if (pos.z < -Game.laneLength + 0.1 && Math.abs(pos.x) > gutterHalf) {
-          clearInterval(this._monitorInterval);
-          this._monitorInterval = null;
-          setTimeout(()=> evaluatePins(), 900);
-          return;
-        }
-      };
-      if (this._monitorInterval) clearInterval(this._monitorInterval);
-      this._monitorInterval = setInterval(check, 200);
-    },
-    remove: function(){
-      if (this._monitorInterval) clearInterval(this._monitorInterval);
-    }
-  });
-
-  // === Spawn pins into scene ===
-  function spawnPins(sceneEl) {
-    // remove old pins
-    sceneEl.querySelectorAll('.pin').forEach(e => e.parentNode && e.parentNode.removeChild(e));
-    Game.pins = [];
-    computePinPositions();
-    Game.pinPositions.forEach((p, idx) => {
-      const pin = document.createElement('a-cylinder');
-      pin.className = 'pin';
-      pin.setAttribute('radius', 0.13);
-      pin.setAttribute('height', 0.5);
-      pin.setAttribute('position', `${p.x} ${p.y} ${p.z}`);
-      pin.setAttribute('color', '#fff');
-      pin.setAttribute('dynamic-body', 'mass:0.5; linearDamping:0.2; angularDamping:0.9');
-      pin.setAttribute('pin-monitor', '');
-      // on pin fallen event, increment knocked count
-      pin.addEventListener('pin-fallen', () => {
-        // ensure we only count once per pin
-        if (!pin.__counted) {
-          pin.__counted = true;
-          Game.scoreFrame++;
-          updateHUD();
+  // === Throwing system ===
+  AFRAME.registerComponent('real-throw', {
+    init: function () {
+      this.el.addEventListener('grab-end', evt => {
+        if (evt.detail && evt.detail.hand && evt.detail.hand.body) {
+          const vel = evt.detail.hand.body.velocity;
+          if (vel) {
+            this.el.body.velocity.set(vel.x, vel.y, vel.z);
+          }
         }
       });
-      sceneEl.appendChild(pin);
-      Game.pins.push(pin);
-    });
-  }
-
-  // === Evaluate pins after a throw, compute strike/spare & schedule reset ===
-  function evaluatePins() {
-    // Count pins that have been flagged (pin.__counted) OR by checking orientation
-    let fallen = 0;
-    Game.pins.forEach(pin => { if (pin.__counted) fallen++; });
-    // If first throw and all down -> strike
-    if (Game.throwInFrame === 1 && fallen === 10) {
-      // strike
-      Game.totalScore += 10; // training: simple scoring
-      showMessage('Strike!');
-      scheduleFrameReset();
-      return;
     }
-    // If two throws or all pins down -> end frame
-    if (Game.throwInFrame >= Game.maxThrows || fallen === 10) {
-      // if spare on second throw
-      if (Game.throwInFrame === 2 && fallen === 10) {
-        Game.totalScore += 10;
-        showMessage('Spare!');
-      } else {
-        Game.totalScore += fallen;
-      }
-      scheduleFrameReset();
-      return;
-    }
-    // else allow next throw (do nothing)
-  }
-
-  // === Reset mechanics ===
-  function scheduleFrameReset() {
-    Game.frameActive = false;
-    updateHUD();
-    setTimeout(()=> {
-      const scene = document.querySelector('a-scene');
-      // remove remaining pins & respawn fresh set
-      spawnPins(scene);
-      // reset counters
-      Game.frame++;
-      Game.throwInFrame = 0;
-      Game.scoreFrame = 0;
-      Game.frameActive = true;
-      // reposition ball
-      resetBall(scene);
-      updateHUD();
-    }, Game.resetDelay);
-  }
-
-  // === Ball creation / reset ===
-  function resetBall(sceneEl) {
-    // remove any existing ball
-    const existing = sceneEl.querySelector('.bowling-ball');
-    if (existing) existing.parentNode && existing.parentNode.removeChild(existing);
-
-    const ball = document.createElement('a-entity');
-    ball.className = 'bowling-ball';
-    ball.setAttribute('position', `${Game.ballSpawn.x} ${Game.ballSpawn.y} ${Game.ballSpawn.z}`);
-    ball.setAttribute('ball-config', 'type: Medium'); // default; HUD allows change
-    ball.setAttribute('grabbable', 'usePhysics: true'); // super-hands grabbable
-    ball.setAttribute('throwable', ''); // older super-hands variant
-    ball.setAttribute('ball-behavior', '');
-    ball.setAttribute('shadow', 'cast:true;receive:false');
-    // visual & sound
-    ball.setAttribute('material', 'color: #b22222; roughness:0.4; metalness:0.1');
-    sceneEl.appendChild(ball);
-    Game.ballEl = ball;
-    return ball;
-  }
-
-  // === HUD update & UI functions ===
-  function updateHUD() {
-    const status = document.getElementById('status');
-    if (!status) return;
-    status.innerHTML = `Frame: <b>${Game.frame}</b> · Throws: <b>${Game.throwInFrame}/${Game.maxThrows}</b><br/>
-      Frame pins: <b>${Game.scoreFrame}</b> · Total score: <b>${Game.totalScore}</b><br/>
-      ${Game.frameActive ? '<span style="color:#8f8">Ready</span>' : '<span style="color:#f88">Resetting...</span>'}`;
-  }
-
-  function showMessage(text) {
-    const msg = document.getElementById('message');
-    if (!msg) return;
-    msg.textContent = text;
-    msg.style.opacity = 1;
-    setTimeout(()=> { msg.style.opacity = 0; msg.textContent = ''; }, 1400);
-  }
-
-  function setBallType(type) {
-    Game.ballType = type;
-    // apply to current ball
-    const b = document.querySelector('.bowling-ball');
-    if (b) b.setAttribute('ball-config', `type: ${type}`);
-  }
-
-  // === Setup DOM HUD on DOMContentLoaded ===
-  document.addEventListener('DOMContentLoaded', () => {
-    const hud = document.createElement('div');
-    hud.className = 'hud';
-    hud.innerHTML = `
-      <div class="big">VR Bowling — Training</div>
-      <div class="row">
-        Ball:
-        <select id="ballSelect">
-          <option>Light</option>
-          <option selected>Medium</option>
-          <option>Heavy</option>
-        </select>
-        <button id="resetFrame">Reset Frame</button>
-      </div>
-      <div class="row" id="status"></div>
-      <div class="row"><button id="resetAll">Reset All</button></div>
-      <div class="row" id="message" style="opacity:0; transition:opacity .4s;"></div>
-      <div style="font-size:12px; opacity:0.9; margin-top:6px;">Controls: grab ball with trigger/grip, pull & release to throw. Move with left joystick.</div>
-    `;
-    document.body.appendChild(hud);
-
-    document.getElementById('ballSelect').addEventListener('change', (e)=> setBallType(e.target.value));
-    document.getElementById('resetFrame').addEventListener('click', () => {
-      const scene = document.querySelector('a-scene');
-      spawnPins(scene);
-      resetBall(scene);
-      Game.throwInFrame = 0;
-      Game.scoreFrame = 0;
-      Game.frameActive = true;
-      updateHUD();
-    });
-    document.getElementById('resetAll').addEventListener('click', () => {
-      const scene = document.querySelector('a-scene');
-      spawnPins(scene);
-      resetBall(scene);
-      Game.frame = 1; Game.throwInFrame = 0; Game.scoreFrame = 0; Game.totalScore = 0; Game.frameActive = true;
-      updateHUD();
-    });
   });
 
-  // expose for debugging
-  window.Game = Game;
-  window.updateHUD = updateHUD;
+  // === VR button ===
+  AFRAME.registerComponent('vr-button', {
+    schema: { action: {type:'string'} },
+    init: function () {
+      this.el.setAttribute('class','interactive');
+      this.el.setAttribute('event-set__enter','material.color: #44f; scale: 1.1 1.1 1');
+      this.el.setAttribute('event-set__leave','material.color: #222; scale: 1 1 1');
+      this.el.addEventListener('click', () => {
+        const scene = document.querySelector('a-scene');
+        scene.emit(this.data.action);
+      });
+    }
+  });
+
+  // === Pin Manager ===
+  AFRAME.registerComponent('pin-manager', {
+    schema: { scoreId: {type:'string'} },
+    init: function () {
+      this.score = 0;
+      this.scoreEl = document.getElementById(this.data.scoreId);
+      const scene = this.el.sceneEl;
+
+      scene.addEventListener('reset-frame', () => this.resetPins());
+      scene.addEventListener('reset-all', () => {
+        this.score = 0;
+        this.updateScore();
+        this.resetPins();
+      });
+    },
+    resetPins: function () {
+      const oldPins = document.querySelectorAll('.pin');
+      oldPins.forEach(p => p.parentNode.removeChild(p));
+
+      const startZ = -10;
+      const startX = 0;
+      const spacing = 0.6;
+      let count = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let i = 0; i <= row; i++) {
+          const pin = document.createElement('a-cylinder');
+          pin.setAttribute('class','pin');
+          pin.setAttribute('color','#fff');
+          pin.setAttribute('height','0.6');
+          pin.setAttribute('radius','0.12');
+          pin.setAttribute('dynamic-body','mass:0.5');
+          let x = startX - row*spacing/2 + i*spacing;
+          let z = startZ - row*spacing;
+          pin.setAttribute('position',`${x} 0.3 ${z}`);
+          pin.addEventListener('collide', e => {
+            if (e.detail.body.el && e.detail.body.el.id === 'ball') {
+              this.score++;
+              this.updateScore();
+              setTimeout(()=> pin.parentNode && pin.parentNode.removeChild(pin), 800);
+            }
+          });
+          this.el.appendChild(pin);
+          count++;
+        }
+      }
+    },
+    updateScore: function () {
+      this.scoreEl.setAttribute('value',`Score: ${this.score}`);
+    }
+  });
   </script>
 </head>
 
 <body>
-  <!-- Scene (uses the required libraries above) -->
-  <a-scene physics="gravity: -9.8; debug: false" shadow="type: pcfsoft" vr-mode-ui="enabled: true">
-    <a-assets>
-      <!-- small sounds (crossorigin) -->
-      <audio id="pin-sound" src="https://cdn.jsdelivr.net/gh/anthonyshort/sounds@master/pop-2.wav" crossorigin="anonymous"></audio>
-      <audio id="strike-sound" src="https://cdn.jsdelivr.net/gh/anthonyshort/sounds@master/tada.wav" crossorigin="anonymous"></audio>
-    </a-assets>
+<a-scene physics="gravity: -9.8">
+  <!-- Lights -->
+  <a-entity light="type: ambient; intensity: 0.5"></a-entity>
+  <a-entity light="type: directional; intensity: 1" position="2 6 2" cast-shadow></a-entity>
 
-    <!-- Lights & floor -->
-    <a-entity light="type: ambient; intensity: 0.5"></a-entity>
-    <a-entity light="type: directional; intensity: 1.0" position="3 8 2" rotation="-30 30 0" cast-shadow></a-entity>
+  <!-- Lane -->
+  <a-plane color="#7BC8A4" rotation="-90 0 0" width="20" height="40" static-body shadow></a-plane>
 
-    <!-- Visual lane + floor -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="30" color="#2f2f2f" static-body shadow="receive:true"></a-plane>
-    <a-box position="0 0.02 -6" width="3" height="0.02" depth="16" color="#c79b6a" static-body></a-box>
-    <!-- gutters visuals -->
-    <a-box position="-1.6 0.06 -6" width="0.3" height="0.06" depth="16" color="#111" static-body></a-box>
-    <a-box position="1.6 0.06 -6" width="0.3" height="0.06" depth="16" color="#111" static-body></a-box>
+  <!-- Pin setup manager -->
+  <a-entity id="pinManager" pin-manager="scoreId:scoreText"></a-entity>
 
-    <!-- Pin holder (pins created dynamically) -->
-    <a-entity id="pin-holder"></a-entity>
+  <!-- Bowling Ball -->
+  <a-sphere id="ball" radius="0.25" color="#B22222" position="0 1 3"
+            dynamic-body="mass:3" grabbable="usePhysics:true"
+            super-hands="colliderEvent: collisions"
+            throwable real-throw shadow></a-sphere>
 
-    <!-- Initial ball will be created on scene load -->
-    <!-- Player rig: keep camera (head) and controllers -->
-    <a-entity id="rig" position="0 1.6 4" movement-controls="speed:0.12;fly:false">
-      <a-entity camera look-controls wasd-controls></a-entity>
-      <a-entity oculus-touch-controls="hand:left" super-hands="colliderEvent: collisions"></a-entity>
-      <a-entity oculus-touch-controls="hand:right" super-hands="colliderEvent: collisions"></a-entity>
-    </a-entity>
+  <!-- VR Menu -->
+  <a-entity position="0 2 -2">
+    <a-plane width="1.6" height="1.2" color="#111" opacity="0.7"></a-plane>
+    <a-text id="scoreText" value="Score: 0" position="0 0.45 0.01" align="center" color="#fff"></a-text>
+    <a-plane width="1.2" height="0.25" position="0 0.1 0.01" color="#222" vr-button="action:reset-frame"></a-plane>
+    <a-text value="Reset Frame" align="center" position="0 0.1 0.02" color="#fff"></a-text>
+    <a-plane width="1.2" height="0.25" position="0 -0.3 0.01" color="#222" vr-button="action:reset-all"></a-plane>
+    <a-text value="Reset All" align="center" position="0 -0.3 0.02" color="#fff"></a-text>
+  </a-entity>
 
-    <!-- small instructions text in the world -->
-    <a-entity position="-2 2.4 3">
-      <a-text value="VR Bowling — Training" color="#fff" width="4"></a-text>
-    </a-entity>
-
-    <!-- Scene initialization -->
-    <script>
-      // On scene loaded, spawn pins and create ball
-      document.querySelector('a-scene').addEventListener('loaded', () => {
-        const scene = document.querySelector('a-scene');
-        computePinPositions();
-        spawnPins(scene);
-        resetBall(scene);
-        updateHUD();
-      });
-    </script>
-  </a-scene>
+  <!-- Player rig -->
+  <a-entity id="rig" movement-controls="speed:0.12" position="0 1.6 5">
+    <a-entity camera look-controls></a-entity>
+    <a-entity laser-controls="hand: left" raycaster="objects:.interactive"></a-entity>
+    <a-entity laser-controls="hand: right" raycaster="objects:.interactive"></a-entity>
+  </a-entity>
+</a-scene>
 </body>
 </html>
