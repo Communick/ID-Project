@@ -283,6 +283,12 @@
             }
           });
 
+          const scoreText = document.querySelector('#scoreText');
+          scoreText.setAttribute('value', `Score: ${fallen}`);
+        
+          const throwText = document.querySelector('#throwText');
+          throwText.setAttribute('value', `Throw: ${this.throwCount + 1}/2`);
+
           // Si c’est un strike
           if (fallen === this.pins.length && this.throwCount === 0) {
             this.strike = true;
