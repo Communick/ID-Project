@@ -58,7 +58,7 @@
           height="0.05"
           depth="18.5"
           material="src: #parquet"
-          static-body="friction: 0.5; angularDamping: 0.3; linearDamping: 0.2">
+          static-body="friction: 0.2; angularDamping: 0.1; linearDamping: 0.1">
         </a-box>
 
         <!-- Quilles -->
@@ -86,7 +86,7 @@
           height="0.05"
           depth="14"
           material="src: #parquet"
-          static-body="friction: 0.7; angularDamping: 0.5; linearDamping: 0.4">
+          static-body="friction: 0.4; angularDamping: 0.2; linearDamping: 0.2">
         </a-box>
 
         <!-- Quilles -->
@@ -114,7 +114,7 @@
           height="0.05"
           depth="14"
           material="src: #parquet"
-          static-body="friction: 1.0; angularDamping: 0.8; linearDamping: 0.6">
+          static-body="friction: 0.6; angularDamping: 0.3; linearDamping: 0.3">
         </a-box>
 
         <!-- Quilles -->
@@ -181,7 +181,7 @@
           color="#4CAF50"
           radius="0.13"
           position="-3 1 0"
-          dynamic-body="shape: sphere; sphereRadius: 0.13; mass: 0.8; friction: 0.95; angularDamping: 0.8; linearDamping: 0.6">
+          dynamic-body="shape: sphere; sphereRadius: 0.13; mass: 0.8; friction: 0.4; angularDamping: 0.1; linearDamping: 0.05">
         </a-sphere>
 
         <!-- Boule 2 : Normale -->
@@ -189,7 +189,7 @@
           color="#2196F3"
           radius="0.15"
           position="2 1 2"
-          dynamic-body="shape: sphere; sphereRadius: 0.15; mass: 1.2; friction: 0.7; angularDamping: 0.5; linearDamping: 0.4">
+          dynamic-body="shape: sphere; sphereRadius: 0.15; mass: 1.2; friction: 0.3; angularDamping: 0.1; linearDamping: 0.05">
         </a-sphere>
 
         <!-- Boule 3 : Difficile -->
@@ -197,7 +197,7 @@
           color="#E53935"
           radius="0.17"
           position="-2 1 2"
-          dynamic-body="shape: sphere; sphereRadius: 0.17; mass: 1.8; friction: 0.4; angularDamping: 0.2; linearDamping: 0.2">
+          dynamic-body="shape: sphere; sphereRadius: 0.17; mass: 1.8; friction: 0.25; angularDamping: 0.1; linearDamping: 0.05">
         </a-sphere>
 
         <!-- Boule 4 : Très Difficile -->
@@ -205,7 +205,7 @@
           color="#111"
           radius="0.18"
           position="0 1 3"
-          dynamic-body="shape: sphere; sphereRadius: 0.18; mass: 2.2; friction: 0.25; angularDamping: 0.1; linearDamping: 0.1">
+          dynamic-body="shape: sphere; sphereRadius: 0.18; mass: 2.2; friction: 0.15; angularDamping: 0.05; linearDamping: 0.03">
         </a-sphere>
 
       <!-- Menu -->
@@ -380,11 +380,11 @@
           this.constraint = null;
 
           // Lance la boule avec force et rotation réalistes
-          const intensity = 2.5;
+          const intensity = 10;
           hitEl.body.velocity.set(
-            this.handVel.x * 25 * intensity,
-            this.handVel.y * 25 * intensity,
-            this.handVel.z * 25 * intensity
+            this.handVel.x * 200 * intensity,
+            this.handVel.y * 200 * intensity,
+            this.handVel.z * 200 * intensity
           );
           hitEl.body.angularVelocity.set(
             this.handAngVel.x * 10,
