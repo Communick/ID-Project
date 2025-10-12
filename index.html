@@ -380,11 +380,10 @@
           this.constraint = null;
 
           // Lance la boule avec force et rotation réalistes
-          const intensity = 10;
           hitEl.body.velocity.set(
-            this.handVel.x * 200 * intensity,
-            this.handVel.y * 200 * intensity,
-            this.handVel.z * 200 * intensity
+            this.handVel.x * 350,
+            this.handVel.y * 350 ,
+            this.handVel.z * 350
           );
           hitEl.body.angularVelocity.set(
             this.handAngVel.x * 10,
