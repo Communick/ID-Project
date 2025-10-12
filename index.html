@@ -85,7 +85,6 @@
           width="1.5"
           height="0.05"
           depth="14"
-          color="#7BC8A4"
           material="src: #parquet"
           static-body="friction: 0.7; angularDamping: 0.5; linearDamping: 0.4">
         </a-box>
@@ -114,7 +113,6 @@
           width="1.5"
           height="0.05"
           depth="14"
-          color="#7BC8A4"
           material="src: #parquet"
           static-body="friction: 1.0; angularDamping: 0.8; linearDamping: 0.6">
         </a-box>
@@ -410,6 +408,55 @@
           hitEl.emit('grab-start');
         }
       });
+
+      // Menu de sélection des niveaux
+      const rightHand = document.querySelector('#rightHand');
+      const buttons = document.querySelectorAll('.menu-button');
+      const level1map = document.querySelector('#level1map');
+      const level2map = document.querySelector('#level2map');
+      const level3map = document.querySelector('#level3map');
+
+      // Effet visuel quand on survole un bouton
+      buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+          btn.setAttribute('color', '#FFD700'); // surbrillance
+        });
+        btn.addEventListener('mouseleave', () => {
+          // couleur d'origine selon l'id
+          if (btn.id === 'level1') btn.setAttribute('color', '#4CAF50');
+          else if (btn.id === 'level2') btn.setAttribute('color', '#2196F3');
+          else if (btn.id === 'level3') btn.setAttribute('color', '#f44336');
+        });
+      });
+
+      // Quand on appuie sur le trigger ou le bouton A
+      function handleSelect() {
+        const intersection = rightHand.components.raycaster.getIntersection(document.querySelector('.menu-button'));
+        const hits = rightHand.components.raycaster.intersections;
+
+        if (hits.length > 0) {
+          const target = hits[0].object.el;
+          console.log('Sélectionné :', target.id);
+
+          // Exemple d’action selon le bouton
+          if (target.id === 'level1') {
+            level1map.setAttribute('visible', 'true');
+            level2map.setAttribute('visible', 'false');
+            level3map.setAttribute('visible', 'false');
+          } else if (target.id === 'level2') {
+            level1map.setAttribute('visible', 'false');
+            level2map.setAttribute('visible', 'true');
+            level3map.setAttribute('visible', 'false');
+          } else if (target.id === 'level3') {
+            level1map.setAttribute('visible', 'false');
+            level2map.setAttribute('visible', 'false');
+            level3map.setAttribute('visible', 'true');
+          }
+        }
+      }
+
+      rightHand.addEventListener('triggerdown', handleSelect);
+      rightHand.addEventListener('abuttondown', handleSelect);
     </script>
   </body>
 </html>
