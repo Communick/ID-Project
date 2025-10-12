@@ -277,6 +277,8 @@
 
             if (!pin.classList.contains('fallen') && tilt > 0.4) {
               pin.classList.add('fallen');
+            }
+            if (pin.classList.contains('fallen')) {
               fallen++;
             }
           });
@@ -287,9 +289,10 @@
             this.endFrame();
           } else if (this.throwCount >= 1) {
             this.endFrame();
+          } else {
+            this.throwCount++;
           }
 
-          this.throwCount++;
           this.throwActive = false;
         },
 
@@ -375,9 +378,11 @@
           this.grabbing = false;
           if (!hitEl) return;
 
+          if (this.constraint) {
+            this.system.removeConstraint(this.constraint);
+            this.constraint = null;
+          }
           hitEl.removeState(this.GRABBED_STATE);
-          this.system.removeConstraint(this.constraint);
-          this.constraint = null;
 
           // Lance la boule avec force et rotation réalistes
           hitEl.body.velocity.set(
