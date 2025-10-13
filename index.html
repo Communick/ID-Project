@@ -398,10 +398,19 @@
             this.handAngVel.y * 2,
             this.handAngVel.z * 2
           );
-        
-          // --- Événement de fin de lancer ---
-          this.el.emit('ball-thrown', { ball: hitEl });
+
+          const game = document.querySelector('[single-frame-bowling]').components['single-frame-bowling'];
+          if (game) {
+            game.throwCount++;
+            game.throwActive = true;
+            document.querySelector('#throwText').setAttribute('value', `Throw: ${game.throwCount}/2`);
+
+            if (game.throwCount >= 2) {
+              game.endFrame();
+            }
+          }
           this.hitEl = null;
+          this.el.emit('ball-thrown', { ball: hitEl });
         },
 
         onHit: function (e) {
