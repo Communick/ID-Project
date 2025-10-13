@@ -238,47 +238,42 @@
     <script>
       AFRAME.registerComponent('single-frame-bowling', {
         init: function () {
-          // Boule par défaut
           this.ball = document.querySelector('#ballNormal');
           this.throwCount = 0;
           this.strike = false;
           this.throwActive = false;
-
-          // Toutes les quilles
+      
           this.pins = Array.from(document.querySelectorAll('[gltf-model="#pin_model"]'));
-
-          // Met à jour la boule active quand le joueur en saisit une
+      
+          // Quand on attrape une boule
           document.querySelectorAll('.grabbable').forEach(b => {
             b.addEventListener('grab-start', () => {
               document.querySelectorAll('.grabbable').forEach(o => o.id = '');
-              b.id = 'ball'; // devient la boule officielle
+              b.id = 'ball';
               this.ball = b;
+      
+              // Écoute les collisions pour cette boule
+              b.addEventListener('collide', e => {
+                const target = e.detail.body.el;
+                if (target && target.getAttribute('gltf-model') === '#pin_model') {
+                  this.throwActive = true;
+                }
+              });
             });
           });
-
-          // Écoute les collisions entre la boule et les quilles
-          setTimeout(() => {
-            if (!this.ball.body) return;
-            this.ball.addEventListener('collide', e => {
-              const target = e.detail.body.el;
-              if (target && target.getAttribute('gltf-model') === '#pin_model') {
-                this.throwActive = true;
-              }
-            });
-          }, 500);
-
+      
           this.el.sceneEl.addEventListener('tick', () => {
             if (this.throwActive) this.checkPins();
           });
         },
-
+      
         checkPins: function () {
           let fallen = 0;
           this.pins.forEach(pin => {
             if (!pin.body) return;
             const rot = pin.object3D.rotation;
             const tilt = Math.abs(rot.x) + Math.abs(rot.z);
-
+      
             if (!pin.classList.contains('fallen') && tilt > 0.4) {
               pin.classList.add('fallen');
             }
@@ -286,14 +281,15 @@
               fallen++;
             }
           });
-
+      
+          // Mise à jour du score et des lancers
           const scoreText = document.querySelector('#scoreText');
           scoreText.setAttribute('value', `Score: ${fallen}`);
-        
+      
           const throwText = document.querySelector('#throwText');
           throwText.setAttribute('value', `Throw: ${this.throwCount + 1}/2`);
-
-          // Si c’est un strike
+      
+          // Gestion du strike ou de la fin de frame
           if (fallen === this.pins.length && this.throwCount === 0) {
             this.strike = true;
             this.endFrame();
@@ -302,41 +298,49 @@
           } else {
             this.throwCount++;
           }
-
+      
           this.throwActive = false;
         },
-
+      
         endFrame: function () {
-          console.log(this.strike ? 'STRIKE!' : 'Frame terminé');
-          setTimeout(() => this.resetFrame(), 2000);
+          console.log(this.strike ? 'STRIKE!' : 'Frame terminée');
+          setTimeout(() => this.resetFrame(), 5000); // délai augmenté
         },
-
+      
         resetFrame: function () {
-          // Remet la boule à zéro
+          // Réinitialise la boule
           if (this.ball && this.ball.body) {
-            const startPos = this.ball.getAttribute('data-start-pos');
+            const startPos = this.ball.getAttribute('data-start-pos').split(' ');
+            const x = parseFloat(startPos[0]);
+            const y = parseFloat(startPos[1]);
+            const z = parseFloat(startPos[2]);
+      
             this.ball.body.velocity.set(0, 0, 0);
             this.ball.body.angularVelocity.set(0, 0, 0);
-            this.ball.body.position.copy(new CANNON.Vec3(startPos.x, startPos.y, startPos.z));
-            this.ball.object3D.position.set(startPos.x, startPos.y, startPos.z);
+            this.ball.body.position.set(x, y, z);
+            this.ball.object3D.position.set(x, y, z);
             this.ball.object3D.rotation.set(0, 0, 0);
           }
-
+      
           // Réinitialise les quilles
           this.pins.forEach(pin => {
             pin.classList.remove('fallen');
             pin.body.velocity.set(0, 0, 0);
             pin.body.angularVelocity.set(0, 0, 0);
-            const pos = pin.getAttribute('position');
-            pin.body.position.copy(new CANNON.Vec3(pos.x, pos.y, pos.z));
+            const pos = pin.getAttribute('data-start-pos').split(' ');
+            const x = parseFloat(pos[0]);
+            const y = parseFloat(pos[1]);
+            const z = parseFloat(pos[2]);
+            pin.body.position.set(x, y, z);
             pin.object3D.rotation.set(0, 0, 0);
           });
-
+      
           // Réinitialise les compteurs
           this.throwCount = 0;
           this.strike = false;
         }
       });
+
 
 
       // Composant amélioré pour les lancers réalistes
