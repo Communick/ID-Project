@@ -249,6 +249,8 @@
               const other = e.detail.body.el;
               if (!pin.classList.contains('fallen') && other && other.classList.contains('grabbable')) {
                 pin.classList.add('fallen');
+                pin.body.allowSleep = true;
+                pin.body.sleep();
                 this.updateScore();
               }
             });
@@ -285,6 +287,7 @@
           });
 
           document.querySelectorAll('.pin').forEach(pin => {
+            pin.body.wakeUp();
             pin.classList.remove('fallen');
             pin.body.velocity.set(0, 0, 0);
             pin.body.angularVelocity.set(0, 0, 0);
