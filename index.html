@@ -258,14 +258,10 @@
                   pin.classList.add('fallen');
                   this.updateScore();
           
-                  // rendre la quille statique pour qu'elle reste tombée
-                  pin.body.mass = 0;
-                  pin.body.updateMassProperties();
-          
                   // faire disparaître la quille après 1 seconde
                   setTimeout(() => {
                     pin.setAttribute('visible', 'false');
-                  }, 1000);
+                  }, 600);
                 }
               }
             });
@@ -304,8 +300,6 @@
           document.querySelectorAll('.pin').forEach(pin => {
             pin.classList.remove('fallen');
             pin.setAttribute('visible', 'true');
-            pin.body.mass = 0.2;
-            pin.body.updateMassProperties();
             pin.body.velocity.set(0, 0, 0);
             pin.body.angularVelocity.set(0, 0, 0);
             const pos = pin.getAttribute('data-start-pos').split(' ');
