@@ -251,17 +251,7 @@
               document.querySelectorAll('.grabbable').forEach(o => o.id = '');
               b.id = 'ball';
               this.ball = b;
-      
-              // Écoute les collisions pour cette boule
-              b.addEventListener('collide', e => {
-                const target = e.detail.body.el;
-                if (target && target.getAttribute('gltf-model') === '#pin_model') {
-                  this.throwActive = true;
-                }
-              });
-            });
-          });
-      
+
           this.el.sceneEl.addEventListener('tick', () => {
             if (this.throwActive) this.checkPins();
           });
@@ -407,12 +397,16 @@
             this.handVel.z * 350
           );
           hitEl.body.angularVelocity.set(
-            this.handAngVel.x * 10,
-            this.handAngVel.y * 10,
-            this.handAngVel.z * 10
+            this.handAngVel.x * 7,
+            this.handAngVel.y * 7,
+            this.handAngVel.z * 7
           );
 
-          this.el.emit('ball-thrown', { ball: hitEl });
+          const game = document.querySelector('[single-frame-bowling]').components['single-frame-bowling'];
+          if (game) {
+            game.throwCount++;
+            game.throwActive = true;
+          }
           this.hitEl = null;
         },
 
