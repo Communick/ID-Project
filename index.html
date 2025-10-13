@@ -385,8 +385,9 @@
           forward.normalize();
         
           // --- Force de lancer ---
-          const power = 18; // entre 15 et 25 selon ton jeu
-          const throwVelocity = forward.multiplyScalar(power);
+          const handSpeed = this.handVel.length(); // vitesse de la main
+          const basePower = 10;
+          const throwVelocity = forward.multiplyScalar(basePower + handSpeed * 20);
         
           // --- Applique la vitesse sur la boule ---
           hitEl.body.velocity.set(throwVelocity.x, this.handVel.y * 6, throwVelocity.z);
