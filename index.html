@@ -428,19 +428,25 @@
         const hits = rightHand.components.raycaster.intersections;
         if (hits.length > 0) {
           const target = hits[0].object.el;
-          if (target.id === 'level1') {
-            level1map.setAttribute('visible', 'true');
-            level2map.setAttribute('visible', 'false');
-            level3map.setAttribute('visible', 'false');
-          } else if (target.id === 'level2') {
-            level1map.setAttribute('visible', 'false');
-            level2map.setAttribute('visible', 'true');
-            level3map.setAttribute('visible', 'false');
-          } else if (target.id === 'level3') {
-            level1map.setAttribute('visible', 'false');
-            level2map.setAttribute('visible', 'false');
-            level3map.setAttribute('visible', 'true');
-          }
+      
+          const levels = [
+            {el: level1map, id: 'level1'},
+            {el: level2map, id: 'level2'},
+            {el: level3map, id: 'level3'}
+          ];
+      
+          levels.forEach(level => {
+            const isActive = target.id === level.id;
+            level.el.setAttribute('visible', isActive);
+      
+            // Activer/désactiver la physique des quilles
+            level.el.querySelectorAll('.pin').forEach(pin => {
+              if (pin.body) {
+                pin.body.sleep(); // mettre au repos la physique
+                pin.body.collisionFilterGroup = isActive ? 1 : 0; // désactiver les collisions si inactif
+              }
+            });
+          });
         }
       }
 
