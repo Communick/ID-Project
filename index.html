@@ -439,11 +439,23 @@
             const isActive = target.id === level.id;
             level.el.setAttribute('visible', isActive);
       
-            // Activer/désactiver la physique des quilles
             level.el.querySelectorAll('.pin').forEach(pin => {
-              if (pin.body) {
-                pin.body.sleep(); // mettre au repos la physique
-                pin.body.collisionFilterGroup = isActive ? 1 : 0; // désactiver les collisions si inactif
+              if (!pin.body) return;
+      
+              if (isActive) {
+                // Réinitialiser la physique
+                const pos = pin.getAttribute('data-start-pos').split(' ');
+                pin.body.position.set(parseFloat(pos[0]), parseFloat(pos[1]), parseFloat(pos[2]));
+                pin.body.velocity.set(0, 0, 0);
+                pin.body.angularVelocity.set(0, 0, 0);
+                pin.body.collisionFilterGroup = 1;
+                pin.object3D.position.set(parseFloat(pos[0]), parseFloat(pos[1]), parseFloat(pos[2]));
+                pin.object3D.rotation.set(0, 0, 0);
+              } else {
+                // Désactiver collisions et arrêter le corps
+                pin.body.velocity.set(0, 0, 0);
+                pin.body.angularVelocity.set(0, 0, 0);
+                pin.body.collisionFilterGroup = 0;
               }
             });
           });
