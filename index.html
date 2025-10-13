@@ -284,12 +284,13 @@
             ball.object3D.rotation.set(0,0,0);
           });
 
-          this.pins.forEach(pin => {
+          document.querySelectorAll('.pin').forEach(pin => {
             pin.classList.remove('fallen');
             pin.body.velocity.set(0, 0, 0);
             pin.body.angularVelocity.set(0, 0, 0);
             const pos = pin.getAttribute('data-start-pos').split(' ');
             pin.body.position.set(parseFloat(pos[0]), parseFloat(pos[1]), parseFloat(pos[2]));
+            pin.object3D.position.set(parseFloat(pos[0]), parseFloat(pos[1]), parseFloat(pos[2]));
             pin.object3D.rotation.set(0, 0, 0);
           });
 
