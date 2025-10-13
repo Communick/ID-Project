@@ -239,46 +239,33 @@
       // ===================== JEU DE BOWLING =====================
       AFRAME.registerComponent('single-frame-bowling', {
         init: function () {
-          this.ball = document.querySelector('#ballNormal');
           this.throwCount = 0;
           this.strike = false;
-          this.throwActive = false;
           this.pins = Array.from(document.querySelectorAll('.pin'));
 
-          document.querySelectorAll('.grabbable').forEach(b => {
-            b.addEventListener('grab-start', () => {
-              this.ball = b;
+          // Écoute collision sur chaque quille
+          this.pins.forEach(pin => {
+            pin.addEventListener('collide', (e) => {
+              const other = e.detail.body.el;
+              if (!pin.classList.contains('fallen') && other && other.classList.contains('grabbable')) {
+                pin.classList.add('fallen');
+                this.updateScore();
+              }
             });
-          });
-
-          this.el.sceneEl.addEventListener('tick', () => {
-            if (this.throwActive) this.checkPins();
           });
         },
 
-        checkPins: function () {
-          let fallen = 0;
-          this.pins.forEach(pin => {
-            if (!pin.body) return;
-            const rot = pin.object3D.rotation;
-            const tilt = Math.abs(rot.x) + Math.abs(rot.z);
-            if (!pin.classList.contains('fallen') && tilt > 0.4) {
-              pin.classList.add('fallen');
-            }
-            if (pin.classList.contains('fallen')) fallen++;
-          });
-
-          document.querySelector('#scoreText').setAttribute('value', `Score: ${fallen}`);
+        updateScore: function () {
+          const fallenCount = this.pins.filter(p => p.classList.contains('fallen')).length;
+          document.querySelector('#scoreText').setAttribute('value', `Score: ${fallenCount}`);
           document.querySelector('#throwText').setAttribute('value', `Throw: ${this.throwCount}/2`);
-
-          if (fallen === this.pins.length && this.throwCount === 1) {
+      
+          if (fallenCount === this.pins.length && this.throwCount >= 1) {
             this.strike = true;
             this.endFrame();
           } else if (this.throwCount >= 2) {
             this.endFrame();
           }
-
-          this.throwActive = false;
         },
 
         endFrame: function () {
@@ -287,14 +274,15 @@
         },
 
         resetFrame: function () {
-          if (this.ball && this.ball.body) {
-            const start = this.ball.getAttribute('data-start-pos').split(' ');
-            this.ball.body.velocity.set(0, 0, 0);
-            this.ball.body.angularVelocity.set(0, 0, 0);
-            this.ball.body.position.set(parseFloat(start[0]), parseFloat(start[1]), parseFloat(start[2]));
-            this.ball.object3D.position.set(parseFloat(start[0]), parseFloat(start[1]), parseFloat(start[2]));
-            this.ball.object3D.rotation.set(0, 0, 0);
-          }
+          document.querySelectorAll('.grabbable').forEach(ball => {
+            if (!ball.body) return;
+            const start = ball.getAttribute('data-start-pos').split(' ');
+            ball.body.velocity.set(0,0,0);
+            ball.body.angularVelocity.set(0,0,0);
+            ball.body.position.set(parseFloat(start[0]), parseFloat(start[1]), parseFloat(start[2]));
+            ball.object3D.position.set(parseFloat(start[0]), parseFloat(start[1]), parseFloat(start[2]));
+            ball.object3D.rotation.set(0,0,0);
+          });
 
           this.pins.forEach(pin => {
             pin.classList.remove('fallen');
@@ -307,6 +295,8 @@
 
           this.throwCount = 0;
           this.strike = false;
+          document.querySelector('#scoreText').setAttribute('value', 'Score: 0');
+          document.querySelector('#throwText').setAttribute('value', 'Throw: 0/2');
         }
       });
 
@@ -383,6 +373,10 @@
             game.throwCount++;
             game.throwActive = true;
             document.querySelector('#throwText').setAttribute('value', `Throw: ${game.throwCount}/2`);
+
+            if (game.throwCount >= 2) {
+              game.endFrame();
+            }
           }
           this.hitEl = null;
         },
