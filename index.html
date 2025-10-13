@@ -246,15 +246,26 @@
 
           // Écoute collision sur chaque quille
           this.tick = () => {
+            if (this.throwCount === 0) return; // ne rien faire avant le premier lancer
+          
             this.pins.forEach(pin => {
               if (!pin.classList.contains('fallen')) {
                 const rotation = pin.object3D.rotation;
                 const xRot = Math.abs(rotation.x);
                 const zRot = Math.abs(rotation.z);
-      
+          
                 if (xRot > this.fallenThreshold || zRot > this.fallenThreshold) {
                   pin.classList.add('fallen');
                   this.updateScore();
+          
+                  // rendre la quille statique pour qu'elle reste tombée
+                  pin.body.mass = 0;
+                  pin.body.updateMassProperties();
+          
+                  // faire disparaître la quille après 1 seconde
+                  setTimeout(() => {
+                    pin.setAttribute('visible', 'false');
+                  }, 1000);
                 }
               }
             });
@@ -292,6 +303,9 @@
 
           document.querySelectorAll('.pin').forEach(pin => {
             pin.classList.remove('fallen');
+            pin.setAttribute('visible', 'true');
+            pin.body.mass = 0.2;
+            pin.body.updateMassProperties();
             pin.body.velocity.set(0, 0, 0);
             pin.body.angularVelocity.set(0, 0, 0);
             const pos = pin.getAttribute('data-start-pos').split(' ');
