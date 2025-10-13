@@ -366,34 +366,40 @@
           const hitEl = this.hitEl;
           this.grabbing = false;
           if (!hitEl) return;
-
+        
           if (this.constraint) {
             this.system.removeConstraint(this.constraint);
             this.constraint = null;
           }
           hitEl.removeState(this.GRABBED_STATE);
-
-          hitEl.body.velocity.set(
-            this.handVel.x * 350,
-            this.handVel.y * 350,
-            this.handVel.z * 350
-          );
+        
+          // --- Calcule la direction avant de la main ---
+          const forward = new THREE.Vector3(0, 0, -1);
+          forward.applyQuaternion(this.el.object3D.quaternion);
+          forward.normalize();
+        
+          // --- On réduit la déviation latérale ---
+          // On veut que le lancer soit presque tout droit vers Z
+          const lateralReduction = 0.3; // 0 = 100% libre, 1 = parfaitement droit
+          forward.x *= (1 - lateralReduction);
+          forward.normalize();
+        
+          // --- Force de lancer ---
+          const power = 18; // entre 15 et 25 selon ton jeu
+          const throwVelocity = forward.multiplyScalar(power);
+        
+          // --- Applique la vitesse sur la boule ---
+          hitEl.body.velocity.set(throwVelocity.x, this.handVel.y * 6, throwVelocity.z);
+        
+          // --- Effet de rotation doux ---
           hitEl.body.angularVelocity.set(
-            this.handAngVel.x * 7,
-            this.handAngVel.y * 7,
-            this.handAngVel.z * 7
+            this.handAngVel.x * 2,
+            this.handAngVel.y * 2,
+            this.handAngVel.z * 2
           );
-
-          const game = document.querySelector('[single-frame-bowling]').components['single-frame-bowling'];
-          if (game) {
-            game.throwCount++;
-            game.throwActive = true;
-            document.querySelector('#throwText').setAttribute('value', `Throw: ${game.throwCount}/2`);
-
-            if (game.throwCount >= 2) {
-              game.endFrame();
-            }
-          }
+        
+          // --- Événement de fin de lancer ---
+          this.el.emit('ball-thrown', { ball: hitEl });
           this.hitEl = null;
         },
 
