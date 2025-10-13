@@ -269,7 +269,8 @@
         },
 
         updateScore: function () {
-          const fallenCount = this.pins.filter(p => p.classList.contains('fallen')).length;
+          const activePins = this.pins.filter(p => p.getAttribute('visible') === true);
+          const fallenCount = activePins.filter(p => p.classList.contains('fallen')).length;
           document.querySelector('#scoreText').setAttribute('value', `Score: ${fallenCount}`);
           document.querySelector('#throwText').setAttribute('value', `Throw: ${this.throwCount}/2`);
       
