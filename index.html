@@ -251,6 +251,8 @@
               document.querySelectorAll('.grabbable').forEach(o => o.id = '');
               b.id = 'ball';
               this.ball = b;
+            });
+          });
 
           this.el.sceneEl.addEventListener('tick', () => {
             if (this.throwActive) this.checkPins();
